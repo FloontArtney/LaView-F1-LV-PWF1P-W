@@ -32,9 +32,9 @@ The following details came from the label on the camera case, an examination of 
 - There is a hardcoded Admin user "WeEyE".  This was outside the project scope, so I did not investigate it, but if the camera was internet- or cloud-connected, that seems like a significant backdoor.
 - The root password is hashed as `$6$4GbqAXEFqeauykeE$a6dqh2CoO6SucAplB/b4uvS5z0hN1Cb2r1pNWpsXL96vMqrrY42lFylXGNJm6RcY.3Lte/QS2.yyI4/pZDHAa1`, which also appears in other cameras.  Hashcat ran for a week on an RTX5060Ti but didn't crack the password, and I never found the solution online, so the default root password remains a mystery.  If you want shell access, you'll need to replace the password (see below).
 - MainStream: VideoSourceConfig0 h.264 (2560x1440) 30fps
-- rtsp://admin:password@192.168.0.x:8554/Streaming/Channels/101 (2560x1440)
+  - `rtsp://admin:password@192.168.0.x:8554/Streaming/Channels/101` (2560x1440)
 - SubStream: VideoSourceConfig1 h.264 (640x360) 30fps
-- rtsp://admin:password@192.168.0.x:8554/Streaming/Channels/102 (640x360)
+  - `rtsp://admin:password@192.168.0.x:8554/Streaming/Channels/102` (640x360)
 - magic : 0x5354524e
 - factory_name : PPSTRONG
 - hardware_ver : M12Q_A4_V10_GC3
@@ -85,6 +85,7 @@ What can we do with this glitch?
   - This causes file X to be read into 0x82008000, where we import its contents into the U-Boot environment, then execute the variable (macro) `zz`, which reads the first 32KB of the TF/μSD card into 0x80008000, then updates the flash at 0x770000 (the JFFS2 partition).
   - This long command would not fit entirely in ppsMmcTool.txt, it would be truncated by the 63 character limit.  By using a separate file (`X`, in this case), we can create longer commands.
   - This won't actually alter the flash, because as noted above, the U-Boot `update` command seems to be impaired in this version.  I did not try separately erasing and writing a partition, but that might work.
+- We can run any sequence of [U-Boot commands](https://docs.u-boot.org/en/stable/usage/index.html) that we want.
 
 For the serial console, note that there are *two* sets of pads that look promising.  The ones you want are right next to the reset button.  Remember that this is 3v3 serial, not RS-232, so use something like a Raspberry Pi to make the connection.
 
@@ -153,6 +154,8 @@ The JFFS2 partition contains a few files, most notably `tuya_config_enc.json`.  
 ```
 This version of ppsapp looks for `tuya_config.json` before looking for `tuya_config_enc.json`.  If the plaintext version exists, it reads and parses it, then writes its (encrypted) values out to `tuya_config_enc.json`, which it then reads back in, before deleting `tuya_config.json`.  In other words, if you place a valid `tuya_config.json` into the JFFS2 partition, it should permanently supersede any existing `tuya_config_enc.json`.  This is useful if you want to change options after taking the camera offline, since you can no longer use the app to make those changes.
 
+You may notice that `"onvif_enable":1` is present in that JSON.  That is necessary to enable ONVIF once the camera is fully connected, but it is not sufficient to overcome the Tuya connectivity gate (meaning that just having `"onvif_enable":1` in the configuration won't open the ONVIF ports without a Tuya connection).
+
 &nbsp;
 
 ### <ins>Squashfs (read-only application filesystem)</ins>
@@ -162,10 +165,10 @@ mkdir /tmp/MySquashfs
 mount part2data /tmp/MySquashfs
 mkdir /tmp/MySquashEdit
 cp -pr /tmp/MySquashfs/* /tmp/MySquashEdit
-(Make modifications to /tmp/MySquashEdit)
+(Make modifications to files in the /tmp/MySquashEdit tree)
 mksquashfs /tmp/MySquashEdit part2modified -comp xz
 ```
-At this point, `part2modified` can be injected back into MTD partition 2 and flashed to the device.
+At this point, assuming you haven't made it too big (limit here is 4288 KB), `part2modified` can be injected back into MTD partition 2 and flashed to the device.
 
 Because the U-Boot `update` command seems to be impaired, I ended up using a CH341A programmer to flash the chip, using the settings for a Winbond W25Q64BV.  Using the clip in-circuit as-is causes problems, so I found that desoldering pin 8 and raising it just far enough off the pad to slip in a piece of insulating tape was good enough.
 
