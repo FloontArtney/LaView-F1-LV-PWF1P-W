@@ -82,7 +82,7 @@ What can we do with this glitch?
 - We can try to re-flash a partition (JFFS2, in this case):
   - File `X` contains: `zz=sf probe;mmc read 80008000 1 8000;sf update 80778000 770000 4000;`
   - File `ppsMmcTool.txt` contains: `style=upgrade,,writeAddr=0,,password=n,,writeLen=0,,fileName=X;env import 82008000;saveenv;run zz;,,`
-  - This causes file X to be read into 0x82008000, where we import its contents into the U-Boot environment, then execute the variable (macro) `zz`, which reads the first 32KB of the TF/μSD card into 0x80008000, then updates the flash at 0x770000 (the JFFS2 partition).
+  - This causes file X to be read into 0x82008000, where we import its contents into the U-Boot environment, then execute the variable (macro) `zz`, which reads the first 16MB of the TF/μSD card into 0x80008000, then updates the flash at 0x770000 (the JFFS2 partition).
   - This long command would not fit entirely in ppsMmcTool.txt, it would be truncated by the 63 character limit.  By using a separate file (`X`, in this case), we can create longer commands.
   - This won't actually alter the flash, because as noted above, the U-Boot `update` command seems to be impaired in this version.  I did not try separately erasing and writing a partition, but that might work.
 - We can run any sequence of [U-Boot commands](https://docs.u-boot.org/en/stable/usage/index.html) that we want.  We could even set it up to boot from the TF/μSD card.
